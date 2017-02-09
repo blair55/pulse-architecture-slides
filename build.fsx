@@ -10,11 +10,8 @@
 // Git configuration (used for publishing documentation in gh-pages branch)
 // The profile where the project is posted
 let gitOwner = "blair55"
-let gitHome = "https://github.com/" + gitOwner
-// The name of the project on GitHub
+let gitHome = "git@github.com:" + gitOwner
 let gitProjectName = "pulse-architecture-slides"
-// The name of the GitHub repo subdirectory to publish slides to
-let gitSubDir = ""
 
 open FsReveal
 open Fake
@@ -145,7 +142,7 @@ Target "ReleaseSlides" (fun _ ->
     if gitOwner = "myGitUser" || gitProjectName = "MyProject" then
         failwith "You need to specify the gitOwner and gitProjectName in build.fsx"
     let tempDocsRoot = __SOURCE_DIRECTORY__ </> "temp/gh-pages"
-    let tempDocsDir = tempDocsRoot </> gitSubDir
+    let tempDocsDir = tempDocsRoot </> ""
     CleanDir tempDocsRoot
     Repository.cloneSingleBranch "" (gitHome + "/" + gitProjectName + ".git") "gh-pages" tempDocsRoot
 
