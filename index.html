@@ -1,0 +1,280 @@
+﻿<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Pulse Architecture</title>
+    <meta name="description" content="Pulse Engineering">
+    <meta name="author" content="Nick Blair">
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <script src="//code.jquery.com/jquery-1.8.0.js"></script>
+    <script src="//code.jquery.com/ui/1.8.23/jquery-ui.js"></script>
+    <script src="//netdna.bootstrapcdn.com/twitter-bootstrap/2.2.1/js/bootstrap.min.js"></script>
+    <script type="text/javascript" src="//cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link href="//netdna.bootstrapcdn.com/twitter-bootstrap/2.2.1/css/bootstrap-combined.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="css/reveal.css">
+    <link rel="stylesheet" href="css/theme/moon.css" id="theme">
+    <link type="text/css" rel="stylesheet" href="fsharp.formatting/styles/style.css" />
+    <link type="text/css" rel="stylesheet" href="fsharp.formatting/styles/deedle.css" />
+    <link type="text/css" rel="stylesheet" href="css/custom.css" />
+    <script src="fsharp.formatting/styles/tips.js" type="text/javascript"></script>
+    <!-- For syntax highlighting -->
+    <link rel="stylesheet" href="lib/css/zenburn.css">
+    <link rel="stylesheet" href="css/fsreveal.css">
+    <!-- If the query includes 'print-pdf', include the PDF print sheet -->
+    <script>
+			if( window.location.search.match( /print-pdf/gi ) ) {
+				var link = document.createElement( 'link' );
+				link.rel = 'stylesheet';
+				link.type = 'text/css';
+				link.href = 'css/print/pdf.css';
+				document.getElementsByTagName( 'head' )[0].appendChild( link );
+			}
+    </script>
+    <!--[if lt IE 9]>
+    <script src="lib/js/html5shiv.js"></script>
+    <![endif]-->
+    <script language="javascript" type="text/javascript">
+        function init()
+        {
+            websocket = new WebSocket("ws://"+window.location.host+"/websocket");
+            websocket.onmessage = function(evt) { location.reload(); };
+        }
+        window.addEventListener("load", init, false);
+    </script>
+</head>
+<body>
+    <div class="reveal">
+        
+        <!-- Any section element inside of this container is displayed as a slide -->
+        <div class="slides">
+            <section >
+<h2>Pulse Architecture</h2>
+</section>
+<section >
+<p>Once a month, for every customer, score and send an email</p>
+<aside class="notes">
+hd takes 2.4 seconds to process an individual<br/>
+exact target takes 3.3 seconds to respond to sending an email<br/>
+24 * 60 * 60 / 5.7 = 15k requests per day<br/>
+currently at 600k customers / 30 days = ~20k per day (loans + cards)<br/>
+</aside>
+</section>
+<section >
+<section >
+<p>HD Call</p>
+<p>~ 2.4 seconds</p>
+</section>
+<section >
+<p>Exact Target Call</p>
+<p>~ 3.3 seconds</p>
+</section>
+<section >
+<p>(60 × 60 × 24) ÷ 5.7 seconds</p>
+<p>≈ 15k customers per day</p>
+</section>
+<section >
+<p>600k customers ÷ 30 days</p>
+<p>≈ 20k customers per day</p>
+<aside class="notes">
+even if we only do HD Calling / solve just the hd problem<br/>
+24 * 60 * 60 / 2.4 = 36k requests per day<br/>
+will take 1080k customers before we reach maximum throughput per day<br/>
+won't be long before we reach this limit<br/>
+going to have to parallelize reprocessing (scale)<br/>
+but! we cannot not send an infinite number of requests to HD at the same time DOS<br/>
+</aside>
+</section>
+<section >
+<p>Just call HD</p>
+<p>(60 × 60 × 24) ÷ 2.4 seconds</p>
+<p>≈ 36k customers per day</p>
+</section>
+<section >
+<p>36k customers per day × 30 days</p>
+<p>≈ 1'080k max customers per month</p>
+</section>
+<section data-background="images/parallelize3.png">
+<h3>Parallel Processing</h3>
+</section>
+<section >
+<h2>⚠️</h2>
+<p>Fallacies of distributed computing</p>
+<p><img src="images/bandwidth-not-infinite.png" alt="bandwidth is not infinite" /></p>
+</section>
+<section >
+<h2>⚠️</h2>
+<p>Denial of service</p>
+<p><img src="images/black-friday.jpg" alt="denial of service" /></p>
+</section>
+<section >
+<h3>Defensive Programming</h3>
+</section>
+<section >
+<h3>Allow for outages</h3>
+</section>
+<section >
+<h3>Architectural Requirements</h3>
+<p>fault tolerant</p>
+<p>pausable</p>
+<p>parallel processing (with care!)</p>
+</section>
+</section>
+<section >
+<section >
+<h2>🔍</h2>
+<h3>Pull Approach</h3>
+<aside class="notes">
+(batch processing)<br/>
+refer to requirement / 'get' all the customers<br/>
+periodically query for customers who we are supposed to process, then process them<br/>
+easy to implement, query simple to define by date of when they were last processed<br/>
+easy to retry when a problem occurs, easy to pause processing when there is some issue<br/>
+inefficient process, have to finely tune the timing otherwise time is lost (36k limit assumes every second of day is used)<br/>
+easy to control parallelism but hard to know which customers are currently being processed without introducing very granular state management<br/>
+leads to having lots of complexity in the database, locks, transactions etc<br/>
+</aside>
+</section>
+<section >
+<h2>🔍</h2>
+<p>✔ fault tolerant</p>
+</section>
+<section >
+<h2>🔍</h2>
+<p>✔ pausable</p>
+</section>
+<section >
+<h2>🔍</h2>
+<p>✘ parallel processing</p>
+</section>
+</section>
+<section >
+<section >
+<h2>🛎</h2>
+<h3>Push approach</h3>
+<aside class="notes">
+reactive processing reactive vs proactive<br/>
+every individual customer gets given a precise time to be processed (scheduling) distributed according to create time<br/>
+the application gets notified everytime someone needs to be processed<br/>
+when processing is finished, assign a new processing time for next month. constant cycle.<br/>
+parallelizing is baked in, doesn't matter if multiple customers are scheduled for the same application<br/>
+x error handling. If something goes wrong during processing how do we recover? Will that person fall off the cycle?<br/>
+x pausing processing. If there is some issue with hd can we pause and continue later without missing customer's scheduled data?<br/>
+x too much parallism. Cumulative effect of customers being processed in the evening. Could unwittingly exhaust hd's resource to serve requests.<br/>
+</aside>
+</section>
+<section >
+<h2>🛎</h2>
+<p>✔ parallel processing</p>
+</section>
+<section >
+<h2>🛎</h2>
+<p>✘ fault tolerant</p>
+</section>
+<section >
+<h2>🛎</h2>
+<p>✘ pausing</p>
+</section>
+<section >
+<h2>🛎</h2>
+<p>✘ over parallelism</p>
+</section>
+<section >
+<p><img src="images/traffic-pattern.png" alt="traffic pattern" /></p>
+</section>
+<section >
+<p><img src="images/black-friday.jpg" alt="denial of service" /></p>
+</section>
+</section>
+<section >
+<section >
+<h2>📮</h2>
+<h3>Message Queues</h3>
+<aside class="notes">
+msg queues help by capturing and storing the intent to do perform some action<br/>
+queues have multiple publishers and multiple consumers<br/>
+a message remains on a queue indefinitely until it is consumed<br/>
+a message will only be consumed once - implies that a message is 'acknowledged' in order for it to be removed<br/>
+</aside>
+<aside class="notes">
+Pausing. we can continue to react to processing notifications by placing a message on a queue, even when HD is down as consumers can be stopped and started<br/>
+Error handling. if there is a problem in processing the message is not acknowledged and remains on the queue to be processed again, doesn't fall off the cycle<br/>
+throttling. we decide on the number of consumers to the queue and therefore prevent unlimited parallel calls to hd.<br/>
+if multiple processing notificatons happen to be sent at the same time, there are simply 'queued' up<br/>
+same technique can be applied to the exact target part of the processing<br/>
+</aside>
+</section>
+<section >
+<h2>🛎 + 📮</h2>
+<p>✔ fault tolerant</p>
+</section>
+<section >
+<h2>🛎 + 📮</h2>
+<p>✔ pausing</p>
+</section>
+<section >
+<h2>🛎 + 📮</h2>
+<p>✔ parallel processing</p>
+</section>
+<section >
+<h2>🛎 + 📮</h2>
+<p>✔ throttling</p>
+</section>
+</section>
+<section >
+<section >
+<p>Overall processing looks like</p>
+</section>
+<section >
+<h2>🛎 + 📮 = ️️❤️</h2>
+</section>
+<section >
+<h2>Fin</h2>
+<p><!--
+"what time will you be kicking off the next batch?"
+"what is your throughput of requests per second?"
+--></p>
+<aside class="notes">
+http://internal-vpc-lb-pulse-customer-1931985984.eu-west-1.elb.amazonaws.com:5002/hangfire<br/>
+</section>
+</section>
+
+
+        </div>
+    </div>
+    <script src="lib/js/head.min.js"></script>
+    <script src="js/reveal.js"></script>
+    <script>
+        // Add the nohighlight class and data-noescape attribute to code elements that have already been formatted by FSharp.Formatting
+        $('pre.highlighted code').addClass('nohighlight').attr('data-noescape', '');
+
+        // Full list of configuration options available here:
+        // https://github.com/hakimel/reveal.js#configuration
+        Reveal.initialize({
+            controls: true,
+            progress: true,
+            history: true,
+            center: true,
+
+            transition: 'zoom', // default/cube/page/concave/zoom/linear/fade/none
+
+            // Parallax scrolling
+            // parallaxBackgroundImage: 'https://s3.amazonaws.com/hakim-static/reveal-js/reveal-parallax-1.jpg',
+            // parallaxBackgroundSize: '2100px 900px',
+
+            // Optional libraries used to extend on reveal.js
+            dependencies: [
+                { src: 'lib/js/classList.js', condition: function () { return !document.body.classList; } },
+                { src: 'plugin/markdown/marked.js', condition: function () { return !!document.querySelector('[data-markdown]'); } },
+                { src: 'plugin/markdown/markdown.js', condition: function () { return !!document.querySelector('[data-markdown]'); } },
+                { src: 'plugin/highlight/highlight.js', async: true, callback: function () { hljs.initHighlightingOnLoad(); } },
+                { src: 'plugin/zoom-js/zoom.js', async: true, condition: function () { return !!document.body.classList; } },
+                { src: 'plugin/notes/notes.js', async: true, condition: function () { return !!document.body.classList; } }
+            ]
+        });
+
+    </script>
+</body>
+</html>
+
