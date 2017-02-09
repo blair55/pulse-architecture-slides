@@ -1,5 +1,5 @@
 - title : Pulse Architecture
-- description : Pulse Engineering
+- description : Pulse Architecture
 - author : Nick Blair
 - theme : moon
 - transition : zoom
