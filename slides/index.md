@@ -17,7 +17,7 @@ Once a month, for every customer, score and send an email
 ' 24 * 60 * 60 / 5.7 = 15k requests per day
 ' currently at 600k customers / 30 days = ~20k per day (loans + cards)
 
-***
+---
 
 HD Call
 
@@ -224,7 +224,17 @@ parallel processing (with care!)
 
 ***
 
-Overall processing looks like
+![flow](images/flow.png)
+
+---
+
+[Live feed](http://internal-vpc-lb-pulse-customer-1931985984.eu-west-1.elb.amazonaws.com:5002/hangfire) 
+
+---
+
+## 🔍 
+
+✘ scalable
 
 ---
  
@@ -233,10 +243,3 @@ Overall processing looks like
 ---
 
 ## Fin
-
- <!--
- "what time will you be kicking off the next batch?"
- "what is your throughput of requests per second?"
- -->
-
-' http://internal-vpc-lb-pulse-customer-1931985984.eu-west-1.elb.amazonaws.com:5002/hangfire
